@@ -3,10 +3,6 @@
     <string name="app_name">TV 桌面</string>
     <string name="btn_open_settings">设置</string>
 
-    <!-- 等待网络遮罩（未设置背景图时显示） -->
-    <string name="waiting_network_title">等待网络连接中</string>
-    <string name="waiting_network_tip">请检查 Wi-Fi 或网线连接，联网后将自动继续</string>
-
     <!-- 设置界面 -->
     <string name="settings_title">设置</string>
     <string name="settings_default_app_label">默认启动应用</string>

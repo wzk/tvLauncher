@@ -73,44 +73,4 @@
             android:paddingEnd="28dp"
             android:paddingBottom="24dp" />
     </LinearLayout>
-
-    <!-- 等待网络连接遮罩：设置了背景图时隐藏提示内容，全屏只显示图片 -->
-    <LinearLayout
-        android:id="@+id/overlay_waiting_network"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/overlay_scrim"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:id="@+id/group_waiting_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
-
-            <ProgressBar
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:indeterminateTint="@color/accent" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="@string/waiting_network_title"
-                android:textColor="@color/text_primary"
-                android:textSize="20sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/waiting_network_tip"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-        </LinearLayout>
-    </LinearLayout>
 </FrameLayout>

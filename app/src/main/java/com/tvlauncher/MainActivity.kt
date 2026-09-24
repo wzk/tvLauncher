@@ -56,8 +56,6 @@ class MainActivity : Activity() {
     private lateinit var rvApps: RecyclerView
     private lateinit var btnOpenSettings: TextView
     private lateinit var contentRoot: View
-    private lateinit var overlayWaiting: View
-    private lateinit var groupWaitingText: View
 
     private lateinit var appAdapter: AppListAdapter
     private var cachedApps: List<AppInfo> = emptyList()
@@ -92,8 +90,6 @@ class MainActivity : Activity() {
         rvApps = findViewById(R.id.rv_apps)
         btnOpenSettings = findViewById(R.id.btn_open_settings)
         contentRoot = findViewById(R.id.content_root)
-        overlayWaiting = findViewById(R.id.overlay_waiting_network)
-        groupWaitingText = findViewById(R.id.group_waiting_text)
 
         setupAppGrid()
 
@@ -137,7 +133,7 @@ class MainActivity : Activity() {
     private fun showWaitingForNetwork() {
         cancelScheduledLaunch()
         waitingForNetwork = true
-        enterWaitingMode(waitingForNetwork = true)
+        enterWaitingMode()
 
         if (networkCallback != null) return // 已在监听中
 
@@ -165,7 +161,6 @@ class MainActivity : Activity() {
 
     private fun hideWaitingForNetwork() {
         waitingForNetwork = false
-        overlayWaiting.visibility = View.GONE
         unregisterNetworkCallback()
     }
 
@@ -209,7 +204,7 @@ class MainActivity : Activity() {
     /** 延迟调度一次默认应用启动；等待期间隐藏桌面内容，全屏只显示启动图 */
     private fun scheduleLaunch(delayMs: Long) {
         cancelScheduledLaunch()
-        enterWaitingMode(waitingForNetwork = false)
+        enterWaitingMode()
         val runnable = Runnable {
             pendingLaunch = null
             launchDefaultApp()
@@ -292,45 +287,38 @@ class MainActivity : Activity() {
     }
 
     /**
-     * 进入等待画面：隐藏桌面内容，全屏显示启动图。
-     * @param waitingForNetwork true=等待网络连接（未设置图片时显示"等待网络连接中"提示）
+     * 进入等待画面：隐藏桌面内容，全屏显示启动图（整个启动过程只显示图片，不显示桌面图标）。
+     * 优先显示用户自定义图片（应用私有目录）；未设置时显示内置默认启动图（assets/logo.jpg）。
      */
-    private fun enterWaitingMode(waitingForNetwork: Boolean) {
+    private fun enterWaitingMode() {
         contentRoot.visibility = View.GONE
         val file = File(filesDir, WallpaperLoader.PRIVATE_WALLPAPER_FILE)
 
-        if (hasCustomWallpaper()) {
-            // 有启动图：全屏 WebView 渲染（Chromium 解码引擎，与系统损坏的 BitmapFactory 无关），
-            // 不显示任何等待文字（key 含文件 lastModified，图片更新后立即生效；
-            // URL 附带 lastModified 参数绕开 Chromium 图片缓存，避免显示旧图）
-            overlayWaiting.visibility = View.GONE
-            ivWallpaper.visibility = View.GONE
-            wvWallpaper.visibility = View.VISIBLE
-            val key = "${file.absolutePath}:${file.lastModified()}"
-            if (webviewLoadedKey != key) {
-                webviewLoadedKey = key
-                val html = "<html><head><meta charset='utf-8'>" +
-                    "<style>html,body{margin:0;padding:0;height:100%;background:#000;}" +
-                    ".bg{position:fixed;left:0;top:0;width:100%;height:100%;" +
-                    "background:url('file://${file.absolutePath}?t=${file.lastModified()}') no-repeat center center;" +
-                    "background-size:cover;}</style></head>" +
-                    "<body><div class='bg'></div></body></html>"
-                wvWallpaper.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
-            }
+        // 自定义图用 file:// 私有路径；默认图用 assets（原始字节由 Chromium 解码，
+        // 与该设备损坏的 BitmapFactory 无关）。URL 附带时间戳参数绕开 Chromium 图片缓存，
+        // 保证图片更新后立即生效。
+        val imgUrl = if (hasCustomWallpaper()) {
+            "file://${file.absolutePath}?t=${file.lastModified()}"
         } else {
-            // 无启动图：内置默认背景 + 等待联网提示
-            wvWallpaper.visibility = View.GONE
-            wvWallpaper.loadUrl("about:blank")
-            webviewLoadedKey = null
-            ivWallpaper.visibility = View.VISIBLE
-            ivWallpaper.setImageResource(R.drawable.bg_wallpaper_default)
-            overlayWaiting.visibility = if (waitingForNetwork) View.VISIBLE else View.GONE
+            "file:///android_asset/logo.jpg"
+        }
+
+        ivWallpaper.visibility = View.GONE
+        wvWallpaper.visibility = View.VISIBLE
+        if (webviewLoadedKey != imgUrl) {
+            webviewLoadedKey = imgUrl
+            val html = "<html><head><meta charset='utf-8'>" +
+                "<style>html,body{margin:0;padding:0;height:100%;background:#000;}" +
+                ".bg{position:fixed;left:0;top:0;width:100%;height:100%;" +
+                "background:url('$imgUrl') no-repeat center center;" +
+                "background-size:cover;}</style></head>" +
+                "<body><div class='bg'></div></body></html>"
+            wvWallpaper.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
         }
     }
 
     /** 退出等待画面：显示桌面（内置默认背景），焦点还给应用网格 */
     private fun exitWaitingMode() {
-        overlayWaiting.visibility = View.GONE
         hideWaitingForNetwork()
         webviewLoadedKey = null
         wvWallpaper.visibility = View.GONE

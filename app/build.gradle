@@ -11,8 +11,8 @@ android {
         applicationId "com.tvlauncher"
         minSdk 21
         targetSdk 34
-        versionCode 20
-        versionName "1.4.5"
+        versionCode 21
+        versionName "1.4.6"
     }
 
     // 固定签名：保证任何机器构建的 APK 签名一致，可直接覆盖安装（adb install -r）
