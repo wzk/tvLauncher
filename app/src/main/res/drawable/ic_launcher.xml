@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 应用图标：电视造型（矢量，无需位图资源即可在 Android 5.0+ 使用） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 机身 -->
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M20,20 h68 a8,8 0 0 1 8,8 v40 a8,8 0 0 1 -8,8 h-68 a8,8 0 0 1 -8,-8 v-40 a8,8 0 0 1 8,-8 z" />
+
+    <!-- 屏幕 -->
+    <path
+        android:fillColor="#0D1B2A"
+        android:pathData="M22,28 h64 a4,4 0 0 1 4,4 v32 a4,4 0 0 1 -4,4 h-64 a4,4 0 0 1 -4,-4 v-32 a4,4 0 0 1 4,-4 z" />
+
+    <!-- 支架 -->
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M48,76 h12 l5,10 h-22 z" />
+
+    <!-- 屏幕中的播放按钮 -->
+    <path
+        android:fillColor="#64B5F6"
+        android:pathData="M46,40 l16,8 -16,8 z" />
+</vector>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TV 桌面</string>
+    <string name="btn_open_settings">设置</string>
+
+    <!-- 等待网络遮罩（未设置背景图时显示） -->
+    <string name="waiting_network_title">等待网络连接中</string>
+    <string name="waiting_network_tip">请检查 Wi-Fi 或网线连接，联网后将自动继续</string>
+
+    <!-- 设置界面 -->
+    <string name="settings_title">设置</string>
+    <string name="settings_default_app_label">默认启动应用</string>
+    <string name="settings_default_app_none">未设置（开机后停留在桌面）</string>
+    <string name="settings_clear_default">清除默认启动应用</string>
+    <string name="settings_custom_bg_label">等待网络背景图</string>
+    <string name="settings_bg_none">未设置（等待联网时显示"等待网络连接中"提示）</string>
+    <string name="settings_bg_pick">选择图片</string>
+    <string name="settings_bg_input">输入图片路径</string>
+    <string name="settings_bg_preview">预览效果</string>
+    <string name="settings_bg_clear">清除自定义背景</string>
+    <string name="settings_footer_hint">提示：任意界面按遥控器【菜单】键可进入本设置页；设置默认应用后，联网及退出该应用时将自动启动，等待期间按【返回】键可取消。</string>
+
+    <!-- 选择弹窗 -->
+    <string name="picker_title">选择默认启动应用</string>
+    <string name="picker_empty">设备上没有可启动的应用</string>
+    <string name="bg_path_hint">支持绝对路径、http:// 下载地址</string>
+    <string name="toast_bg_downloading">正在下载背景图…</string>
+
+    <!-- 内置文件选择器 -->
+    <string name="file_picker_title">选择图片</string>
+    <string name="file_picker_parent">返回上级目录</string>
+    <string name="file_picker_empty">（此目录为空）</string>
+    <string name="file_picker_no_access">（无法访问该目录，请检查存储权限）</string>
+
+    <!-- Toast -->
+    <string name="toast_default_app_missing">默认应用未安装或无法启动</string>
+    <string name="toast_default_app_set">已设置默认启动应用：%1$s</string>
+    <string name="toast_app_launch_failed">应用启动失败</string>
+    <string name="toast_bg_copied">背景图已保存（复制到应用目录）</string>
+    <string name="toast_bg_copy_failed">图片读取失败（系统可能截断数据）：可用 adb 命令直接放入图片，见设置页底部说明</string>
+    <string name="toast_permission_denied">存储权限被拒绝，无法读取图片</string>
+    <string name="toast_bg_reselect_hint">背景图加载失败，请进入【设置】重新选择图片</string>
+    <string name="toast_bg_preview_none">尚未设置背景图</string>
+    <string name="toast_bg_preview_failed">背景图加载失败，请重新设置</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 内置默认待机背景：深色电视风格渐变（作为 ImageView src 拉伸填充全屏） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:angle="315"
+        android:centerColor="#203A43"
+        android:endColor="#2C5364"
+        android:startColor="#0F2027"
+        android:type="linear" />
+</shape>

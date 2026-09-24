@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="text_primary">#F5F7FA</color>
+    <color name="text_secondary">#9AA5B1</color>
+    <color name="focus_stroke">#64B5F6</color>
+    <color name="accent">#FFB300</color>
+    <color name="overlay_scrim">#CC0B0F14</color>
+    <color name="panel_bg">#F2151C26</color>
+</resources>

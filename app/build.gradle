@@ -1,0 +1,59 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.tvlauncher'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.tvlauncher"
+        minSdk 21
+        targetSdk 34
+        versionCode 19
+        versionName "1.4.4"
+    }
+
+    // 固定签名：保证任何机器构建的 APK 签名一致，可直接覆盖安装（adb install -r）
+    signingConfigs {
+        launcher {
+            storeFile file('tvlauncher.keystore')
+            storePassword 'tvlauncher123'
+            keyAlias 'tvlauncher'
+            keyPassword 'tvlauncher123'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.launcher
+        }
+        release {
+            signingConfig signingConfigs.launcher
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    // 统一 APK 输出文件名：tvLauncher-v{版本号}-{构建类型}.apk
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            outputFileName = "tvLauncher-v${variant.versionName}-${variant.buildType.name}.apk"
+        }
+    }
+}
+
+dependencies {
+    // 仅依赖 RecyclerView，保持 APK 精简，适合 TV 设备
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 默认启动应用选择弹窗内容：应用网格 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_picker"
+        android:layout_width="match_parent"
+        android:layout_height="440dp"
+        android:clipToPadding="false"
+        android:padding="12dp" />
+</LinearLayout>
