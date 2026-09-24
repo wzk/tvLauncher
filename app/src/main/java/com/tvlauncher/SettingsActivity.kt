@@ -430,10 +430,11 @@ class SettingsActivity : Activity() {
         val webView = WebView(this).apply {
             settings.javaScriptEnabled = false
             settings.allowFileAccess = true
+            // URL 附带时间戳参数绕开 Chromium 图片缓存，保证每次预览都是最新文件内容
             val html = "<html><head><meta charset='utf-8'>" +
                 "<style>html,body{margin:0;padding:0;height:100%;background:#000;}" +
                 ".bg{position:fixed;left:0;top:0;width:100%;height:100%;" +
-                "background:url('file://${custom.absolutePath}') no-repeat center center;" +
+                "background:url('file://${custom.absolutePath}?t=${System.currentTimeMillis()}') no-repeat center center;" +
                 "background-size:cover;}</style></head>" +
                 "<body><div class='bg'></div></body></html>"
             loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
