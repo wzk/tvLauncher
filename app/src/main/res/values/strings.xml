@@ -14,6 +14,7 @@
     <string name="settings_bg_input">输入图片路径</string>
     <string name="settings_bg_preview">预览效果</string>
     <string name="settings_bg_clear">清除自定义背景</string>
+    <string name="toast_preview_unavailable">此设备 WebView 不可用，无法预览</string>
     <string name="settings_footer_hint">提示：任意界面按遥控器【菜单】键可进入本设置页；设置默认应用后，联网及退出该应用时将自动启动，等待期间按【返回】键可取消。\n更新启动图片：可通过 adb push 图片到设备（如 adb push xxx.jpg /sdcard/），再点【选择图片】选取，或用【输入图片路径】填写 /sdcard/xxx.jpg。</string>
 
     <!-- 选择弹窗 -->

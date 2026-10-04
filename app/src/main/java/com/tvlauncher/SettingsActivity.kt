@@ -426,11 +426,25 @@ class SettingsActivity : Activity() {
             Toast.makeText(this, R.string.toast_bg_preview_none, Toast.LENGTH_SHORT).show()
             return
         }
-        val dialog = Dialog(this, android.R.style.Theme_Material_NoActionBar_Fullscreen)
-        val webView = WebView(this).apply {
-            settings.javaScriptEnabled = false
-            settings.allowFileAccess = true
-            // URL 附带时间戳参数绕开 Chromium 图片缓存，保证每次预览都是最新文件内容
+        // 预览对话框全屏主题：Android 5.0+ 用 Material，4.x 用 Holo（Material 主题 4.x 上不存在）
+        val fullscreenTheme = if (Build.VERSION.SDK_INT >= 21) {
+            android.R.style.Theme_Material_NoActionBar_Fullscreen
+        } else {
+            android.R.style.Theme_Holo_NoActionBar_Fullscreen
+        }
+        val dialog = Dialog(this, fullscreenTheme)
+        // WebView 运行时创建 + try-catch：老设备 WebView 初始化失败时提示，避免设置页崩溃
+        val webView: WebView = try {
+            WebView(this).apply {
+                settings.javaScriptEnabled = false
+                settings.allowFileAccess = true
+            }
+        } catch (_: Throwable) {
+            Toast.makeText(this, R.string.toast_preview_unavailable, Toast.LENGTH_SHORT).show()
+            return
+        }
+        // URL 附带时间戳参数绕开 Chromium 图片缓存，保证每次预览都是最新文件内容
+        webView.apply {
             val html = "<html><head><meta charset='utf-8'>" +
                 "<style>html,body{margin:0;padding:0;height:100%;background:#000;}" +
                 ".bg{position:fixed;left:0;top:0;width:100%;height:100%;" +

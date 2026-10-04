@@ -9,19 +9,24 @@ android {
 
     defaultConfig {
         applicationId "com.tvlauncher"
-        minSdk 21
+        // 支持到 Android 4.4（API 19）：兼容小米电视2s 等老盒子
+        minSdk 19
         targetSdk 34
-        versionCode 21
-        versionName "1.4.6"
+        versionCode 23
+        versionName "1.5.0"
     }
 
-    // 固定签名：保证任何机器构建的 APK 签名一致，可直接覆盖安装（adb install -r）
+    // 固定签名：保证任何机器构建的 APK 签名一致，可直接覆盖安装（adb install -r）。
+    // 显式启用 v1 签名：Android 5.x/6.x 的老盒子只校验 v1（JAR）签名，
+    // 未启用时这些设备上会报"INSTALL_PARSE_FAILED_NO_CERTIFICATES"无法安装。
     signingConfigs {
         launcher {
             storeFile file('tvlauncher.keystore')
             storePassword 'tvlauncher123'
             keyAlias 'tvlauncher'
             keyPassword 'tvlauncher123'
+            enableV1Signing true
+            enableV2Signing true
         }
     }
 

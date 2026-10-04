@@ -13,15 +13,14 @@
         android:scaleType="centerCrop"
         android:src="@drawable/bg_wallpaper_default" />
 
-    <!-- 自定义背景图 WebView 渲染层：部分老设备 BitmapFactory 解码器损坏，
-         WebView 使用 Chromium 自带的图像解码引擎，完全独立于系统解码器。
-         纯背景展示，不可聚焦，避免抢占遥控器 D-Pad 焦点 -->
-    <WebView
-        android:id="@+id/wv_wallpaper"
+    <!-- 启动等待画面渲染层（WebView 在代码中创建并加入此容器）：
+         部分老设备 BitmapFactory 解码器损坏，WebView 使用 Chromium 自带的
+         图像解码引擎，完全独立于系统解码器。运行时创建 + try-catch 包裹，
+         避免老设备/精简 ROM 上 WebView 初始化崩溃导致整个桌面无法打开 -->
+    <FrameLayout
+        android:id="@+id/wv_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
         android:visibility="gone" />
 
     <!-- 桌面主内容（标题栏 + 应用网格）：等待自动启动期间会整体隐藏，仅显示背景图 -->

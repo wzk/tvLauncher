@@ -2,9 +2,11 @@ package com.tvlauncher
 
 import android.Manifest
 import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
@@ -16,6 +18,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.webkit.WebView
 import android.widget.ImageView
 import android.widget.TextView
@@ -52,7 +55,9 @@ class MainActivity : Activity() {
     }
 
     private lateinit var ivWallpaper: ImageView
-    private lateinit var wvWallpaper: WebView
+    private lateinit var wvContainer: ViewGroup
+    /** 启动等待画面 WebView（运行时创建；老设备 WebView 初始化失败时为 null，桌面功能不受影响） */
+    private var wvWallpaper: WebView? = null
     private lateinit var rvApps: RecyclerView
     private lateinit var btnOpenSettings: TextView
     private lateinit var contentRoot: View
@@ -60,8 +65,11 @@ class MainActivity : Activity() {
     private lateinit var appAdapter: AppListAdapter
     private var cachedApps: List<AppInfo> = emptyList()
 
-    /** 网络回调，仅在"等待联网"期间注册 */
+    /** 网络回调（API 21+），仅在"等待联网"期间注册 */
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
+    /** Android 4.x 的网络状态广播接收器，仅在"等待联网"期间注册 */
+    private var legacyNetReceiver: BroadcastReceiver? = null
 
     /** 自动启动调度器：开机延时 2 秒 / 退出立即重进共用 */
     private val launchHandler = Handler(Looper.getMainLooper())
@@ -76,22 +84,46 @@ class MainActivity : Activity() {
     /** 自定义启动图 WebView 已加载的标识（路径+文件修改时间，图片更新后立即生效） */
     private var webviewLoadedKey: String? = null
 
+    /** 应用安装/卸载/更新监听：桌面运行期间自动刷新应用列表（与普通桌面一致） */
+    private val packageChangeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            // 自身覆盖安装不触发刷新
+            if (intent.data?.schemeSpecificPart == packageName) return
+            loadAppsAsync()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         ivWallpaper = findViewById(R.id.iv_wallpaper)
-        wvWallpaper = findViewById(R.id.wv_wallpaper)
-        wvWallpaper.settings.javaScriptEnabled = false
-        wvWallpaper.settings.allowFileAccess = true
-        // 纯背景展示层：禁止聚焦，防止抢占遥控器 D-Pad 焦点
-        wvWallpaper.isFocusable = false
-        wvWallpaper.isFocusableInTouchMode = false
+        wvContainer = findViewById(R.id.wv_container)
+        // WebView 运行时创建 + try-catch：老设备/精简 ROM 上 WebView 初始化可能崩溃，
+        // 捕获后降级为内置背景（桌面与应用启动功能完全不受影响）
+        try {
+            val wv = WebView(this)
+            wv.settings.javaScriptEnabled = false
+            wv.settings.allowFileAccess = true
+            // 纯背景展示层：禁止聚焦，防止抢占遥控器 D-Pad 焦点
+            wv.isFocusable = false
+            wv.isFocusableInTouchMode = false
+            wvContainer.addView(
+                wv,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            )
+            wvWallpaper = wv
+        } catch (_: Throwable) {
+            wvWallpaper = null
+        }
         rvApps = findViewById(R.id.rv_apps)
         btnOpenSettings = findViewById(R.id.btn_open_settings)
         contentRoot = findViewById(R.id.content_root)
 
         setupAppGrid()
+        registerPackageChangeReceiver()
 
         btnOpenSettings.setOnClickListener { openLauncherSettings() }
     }
@@ -121,12 +153,19 @@ class MainActivity : Activity() {
     // 网络检查与监听
     // ------------------------------------------------------------------
 
-    /** 当前是否有可用网络（Wi-Fi / 以太网 / 蜂窝均可，具备 INTERNET 能力即可） */
+    /** 当前是否有可用网络（Wi-Fi / 以太网均可；API 21+ 走 NetworkCapabilities，4.x 走 activeNetworkInfo） */
     private fun isNetworkConnected(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        if (Build.VERSION.SDK_INT >= 21) {
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }
+        // Android 4.x：NetworkCallback/activeNetwork 均不存在，用旧 API
+        @Suppress("DEPRECATION")
+        val info = cm.activeNetworkInfo
+        @Suppress("DEPRECATION")
+        return info != null && info.isConnected
     }
 
     /** 显示"等待网络连接"遮罩，并注册网络状态监听，联网成功自动继续 */
@@ -135,27 +174,43 @@ class MainActivity : Activity() {
         waitingForNetwork = true
         enterWaitingMode()
 
-        if (networkCallback != null) return // 已在监听中
+        if (networkCallback != null || legacyNetReceiver != null) return // 已在监听中
 
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                // 系统回调线程，切回主线程处理
-                runOnUiThread {
-                    if (waitingForNetwork) {
-                        onNetworkReady(returnedFromDefault = false)
+        if (Build.VERSION.SDK_INT >= 21) {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val callback = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    // 系统回调线程，切回主线程处理
+                    runOnUiThread {
+                        if (waitingForNetwork) {
+                            onNetworkReady(returnedFromDefault = false)
+                        }
                     }
                 }
             }
-        }
-        networkCallback = callback
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        try {
-            cm.registerNetworkCallback(request, callback)
-        } catch (_: Exception) {
-            networkCallback = null
+            networkCallback = callback
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            try {
+                cm.registerNetworkCallback(request, callback)
+            } catch (_: Exception) {
+                networkCallback = null
+            }
+        } else {
+            // Android 4.x：无 NetworkCallback，用 CONNECTIVITY_ACTION 广播（联网时系统会发）
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    runOnUiThread {
+                        if (waitingForNetwork && isNetworkConnected()) {
+                            onNetworkReady(returnedFromDefault = false)
+                        }
+                    }
+                }
+            }
+            legacyNetReceiver = receiver
+            @Suppress("DEPRECATION")
+            registerReceiver(receiver, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
         }
     }
 
@@ -173,6 +228,14 @@ class MainActivity : Activity() {
             }
         }
         networkCallback = null
+        // Android 4.x：注销 CONNECTIVITY_ACTION 广播
+        legacyNetReceiver?.let { receiver ->
+            try {
+                unregisterReceiver(receiver)
+            } catch (_: Exception) {
+            }
+        }
+        legacyNetReceiver = null
     }
 
     /**
@@ -251,8 +314,7 @@ class MainActivity : Activity() {
         appAdapter = AppListAdapter { info -> launchApp(info) }
         rvApps.adapter = appAdapter
 
-        cachedApps = AppListLoader.load(this)
-        appAdapter.submit(cachedApps)
+        loadAppsAsync()
 
         // 默认焦点落到第一个应用上，遥控器直接可用（等待画面期间不抢焦点）
         rvApps.post {
@@ -289,14 +351,24 @@ class MainActivity : Activity() {
     /**
      * 进入等待画面：隐藏桌面内容，全屏显示启动图（整个启动过程只显示图片，不显示桌面图标）。
      * 优先显示用户自定义图片（应用私有目录）；未设置时显示内置默认启动图（assets/logo.jpg）。
+     * WebView 不可用（老设备初始化失败）时降级显示内置渐变背景。
      */
     private fun enterWaitingMode() {
         contentRoot.visibility = View.GONE
-        val file = File(filesDir, WallpaperLoader.PRIVATE_WALLPAPER_FILE)
+        val wv = wvWallpaper
+
+        if (wv == null) {
+            // WebView 不可用：降级为内置渐变背景（无自定义图显示能力）
+            wvContainer.visibility = View.GONE
+            ivWallpaper.visibility = View.VISIBLE
+            ivWallpaper.setImageResource(R.drawable.bg_wallpaper_default)
+            return
+        }
 
         // 自定义图用 file:// 私有路径；默认图用 assets（原始字节由 Chromium 解码，
         // 与该设备损坏的 BitmapFactory 无关）。URL 附带时间戳参数绕开 Chromium 图片缓存，
         // 保证图片更新后立即生效。
+        val file = File(filesDir, WallpaperLoader.PRIVATE_WALLPAPER_FILE)
         val imgUrl = if (hasCustomWallpaper()) {
             "file://${file.absolutePath}?t=${file.lastModified()}"
         } else {
@@ -304,7 +376,7 @@ class MainActivity : Activity() {
         }
 
         ivWallpaper.visibility = View.GONE
-        wvWallpaper.visibility = View.VISIBLE
+        wvContainer.visibility = View.VISIBLE
         if (webviewLoadedKey != imgUrl) {
             webviewLoadedKey = imgUrl
             val html = "<html><head><meta charset='utf-8'>" +
@@ -313,7 +385,7 @@ class MainActivity : Activity() {
                 "background:url('$imgUrl') no-repeat center center;" +
                 "background-size:cover;}</style></head>" +
                 "<body><div class='bg'></div></body></html>"
-            wvWallpaper.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+            wv.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
         }
     }
 
@@ -321,8 +393,8 @@ class MainActivity : Activity() {
     private fun exitWaitingMode() {
         hideWaitingForNetwork()
         webviewLoadedKey = null
-        wvWallpaper.visibility = View.GONE
-        wvWallpaper.loadUrl("about:blank")
+        wvContainer.visibility = View.GONE
+        wvWallpaper?.loadUrl("about:blank")
         ivWallpaper.visibility = View.VISIBLE
         ivWallpaper.setImageResource(R.drawable.bg_wallpaper_default)
         if (contentRoot.visibility != View.VISIBLE) {
@@ -334,11 +406,42 @@ class MainActivity : Activity() {
         }
     }
 
+    /** 注册应用安装/卸载/更新广播（运行期动态注册，收到后自动刷新应用列表） */
+    private fun registerPackageChangeReceiver() {
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addDataScheme("package")
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(packageChangeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(packageChangeReceiver, filter)
+        }
+    }
+
+    /** 异步加载应用列表（老设备 PackageManager 查询较慢，避免阻塞主线程） */
+    private fun loadAppsAsync() {
+        Thread {
+            val list = AppListLoader.load(this)
+            runOnUiThread {
+                cachedApps = list
+                appAdapter.submit(cachedApps)
+                // 刷新后若桌面可见，把焦点还给网格第一项，遥控器继续可用
+                if (contentRoot.visibility == View.VISIBLE) {
+                    rvApps.findViewHolderForAdapterPosition(0)?.itemView?.requestFocus()
+                }
+            }
+        }.start()
+    }
+
     override fun onDestroy() {
         pendingLaunch?.let { launchHandler.removeCallbacks(it) }
         pendingLaunch = null
         unregisterNetworkCallback()
-        wvWallpaper.destroy()
+        unregisterReceiver(packageChangeReceiver)
+        wvWallpaper?.destroy()
         super.onDestroy()
     }
 

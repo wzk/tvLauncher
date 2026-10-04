@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 全屏无标题深色主题（Material 主题在 Android 5.0+ 原生可用） -->
-    <style name="Theme.TvLauncher" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+    <!-- 全屏无标题深色主题（Android 4.4 兜底：Holo 主题 API 14+ 可用） -->
+    <style name="Theme.TvLauncher" parent="@android:style/Theme.Holo.NoActionBar.Fullscreen">
         <item name="android:windowBackground">@android:color/black</item>
-        <item name="android:colorAccent">@color/accent</item>
     </style>
 
     <!-- 通用可聚焦"按钮"样式（TextView 实现，紧凑内边距） -->
