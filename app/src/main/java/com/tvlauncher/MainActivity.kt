@@ -153,15 +153,16 @@ class MainActivity : Activity() {
     // 网络检查与监听
     // ------------------------------------------------------------------
 
-    /** 当前是否有可用网络（Wi-Fi / 以太网均可；API 21+ 走 NetworkCapabilities，4.x 走 activeNetworkInfo） */
+    /** 当前是否有可用网络（Wi-Fi / 以太网均可；API 23+ 走 NetworkCapabilities，5.x 及以下走 activeNetworkInfo） */
     private fun isNetworkConnected(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        if (Build.VERSION.SDK_INT >= 21) {
+        if (Build.VERSION.SDK_INT >= 23) {
             val network = cm.activeNetwork ?: return false
             val caps = cm.getNetworkCapabilities(network) ?: return false
             return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         }
-        // Android 4.x：NetworkCallback/activeNetwork 均不存在，用旧 API
+        // Android 5.x 及以下：getActiveNetwork() 是 API 23 才加入的方法，
+        // 在 Android 5.0/5.1（如小米盒子3）上调用会抛 NoSuchMethodError 导致启动即崩溃，必须用旧 API
         @Suppress("DEPRECATION")
         val info = cm.activeNetworkInfo
         @Suppress("DEPRECATION")
@@ -176,7 +177,7 @@ class MainActivity : Activity() {
 
         if (networkCallback != null || legacyNetReceiver != null) return // 已在监听中
 
-        if (Build.VERSION.SDK_INT >= 21) {
+        if (Build.VERSION.SDK_INT >= 23) {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val callback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
@@ -198,7 +199,7 @@ class MainActivity : Activity() {
                 networkCallback = null
             }
         } else {
-            // Android 4.x：无 NetworkCallback，用 CONNECTIVITY_ACTION 广播（联网时系统会发）
+            // Android 5.x 及以下：无 getActiveNetwork()，用 CONNECTIVITY_ACTION 广播监听（联网时系统会发）
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
                     runOnUiThread {
